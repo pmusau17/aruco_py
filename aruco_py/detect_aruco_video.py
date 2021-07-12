@@ -38,9 +38,11 @@ class DetectAruco(Node):
         (corners, ids, rejected) = cv2.aruco.detectMarkers(cv_image,
                 self.arucoDict, parameters=self.arucoParams)
         
-        msg= String()
-        msg.data = str(len(ids))
-        self.publisher.publish(msg)
+        if(ids):
+            print(ids)
+            msg= String()
+            msg.data = str(len(ids))
+            self.publisher.publish(msg)
 
         # verify *at least* one ArUco marker was detected
 

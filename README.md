@@ -2,6 +2,8 @@
 
 Aruco marker detection with OpenCV 4.5.3 and ROS2. 
 
+![aruco_tag_demo](images/aruco_tag.gif)
+
 # Getting Started 
 
 Make sure you have [ROS2](https://docs.ros.org/en/foxy/Installation.html) Installed on your machine. Create a workspace
