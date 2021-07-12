@@ -1,51 +1,74 @@
-import argparse
-import cv2
+import os
 import sys
+import time
+import unittest
 
+from launch import LaunchDescription
 
-ARUCO_DICT = {
-	"DICT_4X4_50": cv2.aruco.DICT_4X4_50,
-	"DICT_4X4_100": cv2.aruco.DICT_4X4_100,
-	"DICT_4X4_250": cv2.aruco.DICT_4X4_250,
-	"DICT_4X4_1000": cv2.aruco.DICT_4X4_1000,
-	"DICT_5X5_50": cv2.aruco.DICT_5X5_50,
-	"DICT_5X5_100": cv2.aruco.DICT_5X5_100,
-	"DICT_5X5_250": cv2.aruco.DICT_5X5_250,
-	"DICT_5X5_1000": cv2.aruco.DICT_5X5_1000,
-	"DICT_6X6_50": cv2.aruco.DICT_6X6_50,
-	"DICT_6X6_100": cv2.aruco.DICT_6X6_100,
-	"DICT_6X6_250": cv2.aruco.DICT_6X6_250,
-	"DICT_6X6_1000": cv2.aruco.DICT_6X6_1000,
-	"DICT_7X7_50": cv2.aruco.DICT_7X7_50,
-	"DICT_7X7_100": cv2.aruco.DICT_7X7_100,
-	"DICT_7X7_250": cv2.aruco.DICT_7X7_250,
-	"DICT_7X7_1000": cv2.aruco.DICT_7X7_1000,
-	"DICT_ARUCO_ORIGINAL": cv2.aruco.DICT_ARUCO_ORIGINAL,
-	"DICT_APRILTAG_16h5": cv2.aruco.DICT_APRILTAG_16h5,
-	"DICT_APRILTAG_25h9": cv2.aruco.DICT_APRILTAG_25h9,
-	"DICT_APRILTAG_36h10": cv2.aruco.DICT_APRILTAG_36h10,
-	"DICT_APRILTAG_36h11": cv2.aruco.DICT_APRILTAG_36h11
-}
+from launch_ros.actions import Node
 
-class ArucoDetect:
-    
-    def __init__(self):
+import launch_testing
+import pytest
+import rclpy
 
+from std_msgs.msg import String 
 
-    def parse_args(self):
-        # construct the argument parser and parse the arguments
-        ap = argparse.ArgumentParser()
-        ap.add_argument("-i", "--image", required=True,help="path to input image containing ArUCo tag")
-        ap.add_argument("-t", "--type", type=str,default="DICT_ARUCO_ORIGINAL",help="type of ArUCo tag to detect")
-        args = vars(ap.parse_args())
+@pytest.mark.rostest
+def generate_test_description():
+    path_to_aruco_image_publisher_fixture = os.path.join(os.path.dirname(__file__), 'fixtures', 'aruco_image_publisher.py')
+    path_to_test_data = os.path.join(os.path.dirname(__file__), 'data')
+    print(path_to_test_data)
+    path_to_image = os.path.join(path_to_test_data, 'marker23.png')
 
-        # verify that the supplied ArUCo tag exists and is supported by
-        # OpenCV
-        if ARUCO_DICT.get(args["type"], None) is None:
-	        print("[INFO] ArUCo tag of '{}' is not supported".format(args["type"]))
-	        sys.exit(0)
+    return LaunchDescription([
+        # Aruco image publisher
+        Node(
+            executable=sys.executable,
+            arguments=[
+                path_to_aruco_image_publisher_fixture,
+                path_to_image
+            ],
+            output='screen'
+        ),
+        # DisparityNode
+        Node(
+            package='aruco_py',
+            executable='detectVideo',
+            name='detect_node',
+            arguments=[
+                '-t', 
+                'DICT_6X6_250'
+            ],
+            output='screen'
+        ),
+        launch_testing.actions.ReadyToTest(),
+    ])
 
-        # load the input image from disk and resize it
-        print("[INFO] loading image...")
-        image = cv2.imread(args["image"])
-        image = imutils.resize(image, width=600)
+class TestArucoNode(unittest.TestCase):
+
+    @classmethod
+    def setUpClass(cls):
+        rclpy.init()
+        cls.node = rclpy.create_node('test_aruco_node')
+
+    @classmethod
+    def tearDownClass(cls):
+        cls.node.destroy_node()
+        rclpy.shutdown()
+
+    def test_message_received(self):
+        # Expect the point cloud node to publish on '/points2' topic
+        msgs_received = []
+        self.node.create_subscription(
+            String,
+            'num_markers',
+            lambda msg: msgs_received_rgb.append(msg),
+            1
+        )
+
+        # Wait up to 60 seconds to receive message
+        start_time = time.time()
+        while (len(msgs_received) == 0 and (time.time() - start_time) < 60):
+            rclpy.spin_once(self.node, timeout_sec=(0.1))
+            
+        assert len(msgs_received) > 0

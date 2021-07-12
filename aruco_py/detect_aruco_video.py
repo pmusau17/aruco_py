@@ -5,6 +5,7 @@ import sys
 import rclpy
 from rclpy.node import Node
 from sensor_msgs.msg import Image
+from std_msgs.msg import String
 from cv_bridge import CvBridge, CvBridgeError
 
 # import list of aruco tags from OpenCV
@@ -18,6 +19,8 @@ class DetectAruco(Node):
         super().__init__('detect_aruco_node')
         self.cv_bridge = CvBridge()
         self.subscription = self.create_subscription(Image, 'image_raw',self.aruco_detect, 10)
+        self.publisher = self.create_publisher(String,'num_markers',10)
+        self.visualize_result = args['visualize']
 
         # load the ArUCo dictionary, grab the ArUCo parameters, and detect
         # the markers
@@ -34,6 +37,10 @@ class DetectAruco(Node):
 
         (corners, ids, rejected) = cv2.aruco.detectMarkers(cv_image,
                 self.arucoDict, parameters=self.arucoParams)
+        
+        msg= String()
+        msg.data = str(len(ids))
+        self.publisher.publish(msg)
 
         # verify *at least* one ArUco marker was detected
 
@@ -90,11 +97,9 @@ class DetectAruco(Node):
                 print('[INFO] ArUco marker ID: {}'.format(markerID))
                 
                 # show the output image
-
-                cv2.imshow('Image', cv_image)
-                cv2.waitKey(3)
-        else: 
-            print(rejected)
+                if(self.visualize_result):
+                    cv2.imshow('Image', cv_image)
+                    cv2.waitKey(3)
 
 
 def main():
@@ -102,8 +107,11 @@ def main():
     ap.add_argument('-t', '--type', type=str,
                     default='DICT_ARUCO_ORIGINAL',
                     help='type of ArUCo tag to generate')
-    args = vars(ap.parse_args())
-
+    ap.add_argument('-v', '--visualize', type=bool,
+                    default=False,
+                    help='visualize result')
+    args, unknown = ap.parse_known_args()
+    args = vars(args)
     # verify that the supplied ArUCo tag exists and is supported by OpenCV
 
     if ARUCO_DICT.get(args['type'], None) is None:

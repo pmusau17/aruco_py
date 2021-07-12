@@ -104,4 +104,4 @@ class ArucoDetect:
                 cv2.waitKey(0)
 
 if __name__ == '__main__':
-    publisher = ArucoDetect()
+    ar_detect = ArucoDetect()
