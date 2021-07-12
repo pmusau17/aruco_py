@@ -42,6 +42,6 @@ ros2 launch usb_cam demo_launch.py
 Launch the marker detection node
 
 ```
-ros2 run aruco_py detectVideo -t DICT_6X6_250
+ros2 run aruco_py detectVideo -t DICT_6X6_250 -v True
 ```
 
